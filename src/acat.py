@@ -1405,10 +1405,7 @@ class AcatAgent:
         content = message.get("content", "")
         tool_calls = message.get("tool_calls", [])
 
-        # Debug: print raw response if content is empty
         if not content and not tool_calls:
-            print(f"  \033[34m[Debug: Empty response from model]\033[0m")
-            print(f"  \033[34m[Response: {response}]\033[0m")
             return "Model returned empty response. Please try again.", False
 
         if tool_calls:
@@ -1534,13 +1531,6 @@ class AcatAgent:
                     "tool_call_id": tool_call.get("id", ""),
                     "name": tool_call.get("function", {}).get("name", "")
                 })
-                # Show result in green for success, red for error, yellow for skipped/cancelled
-                if result.startswith("Error") or result.startswith("Failed"):
-                    print(f"  \033[31m-> {result[:100]}...\033[0m" if len(result) > 100 else f"  \033[31m-> {result}\033[0m")
-                elif result.startswith("Skipped") or result.startswith("Write cancelled"):
-                    print(f"  \033[33m-> {result[:100]}...\033[0m" if len(result) > 100 else f"  \033[33m-> {result}\033[0m")
-                else:
-                    print(f"  \033[32m-> {result[:100]}...\033[0m" if len(result) > 100 else f"  \033[32m-> {result}\033[0m")
 
             # Continue conversation with tool results
             assistant_msg = dict(message)
@@ -1611,10 +1601,6 @@ class AcatAgent:
                         "path": str(resolved_path),
                         "content": file_info["content"]
                     })
-                    if result.startswith("Error") or result.startswith("Failed"):
-                        print(f"  \033[31m-> {result}\033[0m")
-                    else:
-                        print(f"  \033[32m-> {result}\033[0m")
                 else:
                     print(f"  \033[33mSkipped {file_path}\033[0m")
 
