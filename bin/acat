@@ -35,6 +35,16 @@ get_model() {
     fi
 }
 
+# Get provider from config or use default
+get_provider() {
+    if [ -f "${ACAT_CONFIG_DIR}/config.json" ]; then
+        provider=$(python3 -c "import json; print(json.load(open('${ACAT_CONFIG_DIR}/config.json')).get('provider', 'ollama'))" 2>/dev/null || echo "ollama")
+        echo "$provider"
+    else
+        echo "ollama"
+    fi
+}
+
 # Check if Ollama is running
 check_ollama() {
     if ! command -v ollama &> /dev/null; then
@@ -112,9 +122,14 @@ main() {
         model=$(get_model)
     fi
 
-    # Check Ollama
-    check_ollama
-    check_model "$model"
+    # Get provider
+    provider=$(get_provider)
+
+    # Only check Ollama for local provider
+    if [ "$provider" = "ollama" ]; then
+        check_ollama
+        check_model "$model"
+    fi
 
     # Run Python agent
     if [ -n "$cmd" ]; then
@@ -132,7 +147,11 @@ main() {
         echo -e "${BLUE}      Aye Chan Aung Thwin's CLI Agent${NC}"
         echo -e "${BLUE}                (ACAT)${NC}"
         echo ""
-        echo -e "${BLUE}           Powered by Ollama${NC}"
+        if [ "$provider" = "ollama" ]; then
+            echo -e "${BLUE}           Powered by Ollama${NC}"
+        else
+            echo -e "${BLUE}           Powered by ${provider^}${NC}"
+        fi
         echo ""
         echo -e "Model: ${GREEN}${model}${NC}"
         echo -e "Working directory: ${GREEN}$(pwd)${NC}"
