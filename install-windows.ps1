@@ -163,12 +163,19 @@ function Test-Ollama {
         exit 1
     }
 
-    # Check if Ollama is running
-    $ollamaProcess = Get-Process -Name "ollama" -ErrorAction SilentlyContinue
-    if (-not $ollamaProcess) {
+    # Check if Ollama is running by trying to connect to its API
+    $ollamaRunning = $false
+    try {
+        $response = Invoke-WebRequest -Uri "http://localhost:11434/api/version" -UseBasicParsing -TimeoutSec 3 -ErrorAction Stop
+        $ollamaRunning = $true
+    } catch {
+        $ollamaRunning = $false
+    }
+
+    if (-not $ollamaRunning) {
         Write-Host "${Yellow}Warning: Ollama is not running. Starting Ollama...${NC}"
         Start-Process -FilePath "ollama" -ArgumentList "serve" -WindowStyle Hidden
-        Start-Sleep -Seconds 2
+        Start-Sleep -Seconds 3
     }
 }
 

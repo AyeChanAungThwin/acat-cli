@@ -21,6 +21,38 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 
+# Enable ANSI escape codes on Windows
+_ANSI_SUPPORTED = True
+if sys.platform == "win32":
+    import ctypes
+    kernel32 = ctypes.windll.kernel32
+    # ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
+    _ANSI_SUPPORTED = False
+    for handle_id in (-11, -12):  # STD_OUTPUT_HANDLE, STD_ERROR_HANDLE
+        handle = kernel32.GetStdHandle(handle_id)
+        mode = ctypes.c_ulong()
+        if kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+            if kernel32.SetConsoleMode(handle, mode.value | 0x0004):
+                _ANSI_SUPPORTED = True
+
+# Strip ANSI escape codes on terminals that don't support them
+_ANSI_RE = re.compile(r'\033\[[0-9;]*m')
+
+def _strip_ansi(text):
+    """Remove ANSI escape codes if terminal doesn't support them."""
+    if _ANSI_SUPPORTED:
+        return text
+    return _ANSI_RE.sub('', text)
+
+# Replace built-in print with ANSI-aware version
+_original_print = print
+
+def print(*args, **kwargs):
+    """Print that strips ANSI codes on terminals that don't support them."""
+    text = ' '.join(str(a) for a in args)
+    text = _strip_ansi(text)
+    _original_print(text, **kwargs)
+
 # prompt_toolkit for better completion (optional)
 try:
     from prompt_toolkit import PromptSession
@@ -221,7 +253,7 @@ class AcatAgent:
         self._loading_done = True
         if hasattr(self, '_loading_thread') and self._loading_thread.is_alive():
             self._loading_thread.join(timeout=1)
-        sys.stdout.write('\r\033[K')
+        sys.stdout.write(_strip_ansi('\r\033[K'))
         sys.stdout.flush()
 
     def _loading_animation(self):
@@ -231,7 +263,7 @@ class AcatAgent:
             elapsed = int(time.time() - self._loading_start_time)
             timer = str(timedelta(seconds=elapsed)).zfill(8)[:8]
             spinner = SPINNER_CHARS[idx % len(SPINNER_CHARS)]
-            sys.stdout.write(f'\r\033[K\033[38;5;208m  {spinner} Thinking... {timer}\033[0m')
+            sys.stdout.write(_strip_ansi(f'\r\033[K\033[38;5;208m  {spinner} Thinking... {timer}\033[0m'))
             sys.stdout.flush()
             idx += 1
             time.sleep(0.15)
@@ -2639,7 +2671,10 @@ Keyboard Shortcuts:
 
             while not self.stop_flag:
                 try:
-                    user_input = input("\033[92macat>\033[0m ")
+                    # Print prompt separately for Windows compatibility
+                    sys.stdout.write(_strip_ansi("\033[92macat>\033[0m "))
+                    sys.stdout.flush()
+                    user_input = input()
                     display_input = user_input.strip()
 
                     if not display_input:
