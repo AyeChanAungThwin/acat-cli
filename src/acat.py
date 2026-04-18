@@ -239,8 +239,13 @@ class AcatAgent:
     def _load_config(self) -> Dict:
         """Load configuration from file"""
         if ACAT_CONFIG_FILE.exists():
-            with open(ACAT_CONFIG_FILE, 'r') as f:
-                return json.load(f)
+            try:
+                with open(ACAT_CONFIG_FILE, 'r', encoding='utf-8-sig') as f:
+                    data = json.load(f)
+                    return data if data else {"model": DEFAULT_MODEL}
+            except (json.JSONDecodeError, ValueError):
+                # Config file is empty or corrupt — start fresh
+                pass
         return {"model": DEFAULT_MODEL}
 
     def _save_config(self):

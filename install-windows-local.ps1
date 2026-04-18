@@ -75,11 +75,8 @@ Write-Host ""
 Write-Host "${Cyan}[4/7] Creating default configuration...${NC}"
 $ConfigPath = "$InstallDir\config.json"
 if (-not (Test-Path $ConfigPath)) {
-    $ConfigContent = @{
-        model = "gemma4:latest"
-        provider = "ollama"
-    } | ConvertTo-Json
-    Set-Content -Path $ConfigPath -Value $ConfigContent -Encoding UTF8
+    $ConfigContent = '{"model": "gemma4:latest", "provider": "ollama"}'
+    [System.IO.File]::WriteAllText($ConfigPath, $ConfigContent, [System.Text.Encoding]::UTF8)
     Write-Host "${Green}  [OK] Created config.json with default model: gemma4:latest${NC}"
 } else {
     Write-Host "${Yellow}  [!] config.json already exists, keeping existing configuration${NC}"
