@@ -84,6 +84,21 @@ fi
 # Export for current session
 export PATH="$BIN_DIR:$PATH"
 
+# Create default configuration
+echo -e "${GREEN}Creating default configuration...${NC}"
+CONFIG_FILE="$INSTALL_DIR/config.json"
+if [ ! -f "$CONFIG_FILE" ]; then
+    cat > "$CONFIG_FILE" << 'CONFIG'
+{
+    "model": "gemma4:latest",
+    "provider": "ollama"
+}
+CONFIG
+    echo -e "${GREEN}  Created config.json with default model: gemma4:latest${NC}"
+else
+    echo -e "${YELLOW}  config.json already exists, keeping existing configuration${NC}"
+fi
+
 # Check for Ollama
 if ! command -v ollama &> /dev/null; then
     echo ""
@@ -109,6 +124,7 @@ echo -e "${GREEN}╚════════════════════
 echo ""
 echo "Installation location: $INSTALL_DIR"
 echo "Binary location: $BIN_DIR/acat"
+echo "Default model: gemma4:latest"
 echo ""
 echo "To get started:"
 if [ -n "$profile_file" ]; then

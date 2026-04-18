@@ -23,7 +23,7 @@ echo -e "${BLUE}╚════════════════════�
 echo ""
 
 # Step 1: Check for Ollama
-echo -e "${CYAN}[1/6] Checking Ollama...${NC}"
+echo -e "${CYAN}[1/7] Checking Ollama...${NC}"
 if ! command -v ollama &> /dev/null; then
     echo -e "${YELLOW}  Ollama is not installed.${NC}"
     echo -e "${CYAN}      Installing Ollama...${NC}"
@@ -37,7 +37,7 @@ fi
 echo ""
 
 # Step 2: Create directories
-echo -e "${CYAN}[2/6] Creating directories...${NC}"
+echo -e "${CYAN}[2/7] Creating directories...${NC}"
 mkdir -p "$INSTALL_DIR"
 mkdir -p "$BIN_DIR"
 mkdir -p "$INSTALL_DIR/bin"
@@ -46,7 +46,7 @@ echo -e "${GREEN}  ✓ Created $BIN_DIR${NC}"
 echo ""
 
 # Step 3: Download acat files from GitHub
-echo -e "${CYAN}[3/6] Downloading acat from GitHub...${NC}"
+echo -e "${CYAN}[3/7] Downloading acat from GitHub...${NC}"
 TEMP_DIR=$(mktemp -d)
 if curl -fsSL "${GITHUB_REPO}/archive/refs/heads/main.tar.gz" -o "$TEMP_DIR/acat.tar.gz" 2>/dev/null; then
     tar -xzf "$TEMP_DIR/acat.tar.gz" -C "$TEMP_DIR"
@@ -82,8 +82,24 @@ fi
 rm -rf "$TEMP_DIR"
 echo ""
 
-# Step 4: Create wrapper script
-echo -e "${CYAN}[4/6] Creating PATH wrapper...${NC}"
+# Step 4: Create default configuration
+echo -e "${CYAN}[4/7] Creating default configuration...${NC}"
+CONFIG_FILE="$INSTALL_DIR/config.json"
+if [ ! -f "$CONFIG_FILE" ]; then
+    cat > "$CONFIG_FILE" << 'CONFIG'
+{
+    "model": "gemma4:latest",
+    "provider": "ollama"
+}
+CONFIG
+    echo -e "${GREEN}  [OK] Created config.json with default model: gemma4:latest${NC}"
+else
+    echo -e "${YELLOW}  [!] config.json already exists, keeping existing configuration${NC}"
+fi
+echo ""
+
+# Step 5: Create wrapper script
+echo -e "${CYAN}[5/7] Creating PATH wrapper...${NC}"
 cat > "$BIN_DIR/acat" << 'WRAPPER'
 #!/bin/bash
 exec "$HOME/.acat/bin/acat" "$@"
@@ -92,8 +108,8 @@ chmod +x "$BIN_DIR/acat"
 echo -e "${GREEN}  ✓ Created $BIN_DIR/acat${NC}"
 echo ""
 
-# Step 5: Add to PATH in shell profile
-echo -e "${CYAN}[5/6] Configuring PATH for global access...${NC}"
+# Step 6: Add to PATH in shell profile
+echo -e "${CYAN}[6/7] Configuring PATH for global access...${NC}"
 
 modify_profile() {
     local export_line="export PATH=\"\$HOME/.local/bin:\$PATH\""
@@ -133,8 +149,8 @@ modify_profile() {
 modify_profile
 echo ""
 
-# Step 6: Pull default model
-echo -e "${CYAN}[6/6] Pulling default model (gemma4:latest)...${NC}"
+# Step 7: Pull default model
+echo -e "${CYAN}[7/7] Pulling default model (gemma4:latest)...${NC}"
 ollama pull gemma4:latest 2>/dev/null && echo -e "${GREEN}  ✓ Model pulled successfully${NC}" || echo -e "${YELLOW}  ! Model pull failed. Run 'ollama pull gemma4:latest' later.${NC}"
 echo ""
 
@@ -148,6 +164,7 @@ echo -e "${CYAN}Installation Summary:${NC}"
 echo "  • acat installed to: $INSTALL_DIR"
 echo "  • Wrapper created at: $BIN_DIR/acat"
 echo "  • PATH configured in: ~/.zshrc, ~/.bashrc, ~/.profile"
+echo "  • Default model: gemma4:latest"
 echo ""
 echo -e "${YELLOW}Next steps:${NC}"
 echo "  1. Run: source ~/.zshrc    (for zsh users)"

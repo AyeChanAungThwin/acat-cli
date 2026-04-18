@@ -12,6 +12,21 @@ echo "Installing acat locally in: $SCRIPT_DIR"
 # Make binary executable
 chmod +x "$SCRIPT_DIR/bin/acat"
 
+# Create default configuration
+CONFIG_FILE="$HOME/.acat/config.json"
+if [ ! -f "$CONFIG_FILE" ]; then
+    mkdir -p "$HOME/.acat"
+    cat > "$CONFIG_FILE" << 'CONFIG'
+{
+    "model": "gemma4:latest",
+    "provider": "ollama"
+}
+CONFIG
+    echo "  Created config.json with default model: gemma4:latest"
+else
+    echo "  config.json already exists, keeping existing configuration"
+fi
+
 # Create symlink
 ln -sf "$SCRIPT_DIR/bin/acat" "$SCRIPT_DIR/acat"
 

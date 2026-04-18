@@ -8,13 +8,14 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# Colors
-$Red = "`e[0;31m"
-$Green = "`e[0;32m"
-$Yellow = "`e[1;33m"
-$Blue = "`e[0;34m"
-$Cyan = "`e[0;36m"
-$NC = "`e[0m"
+# Colors - using [char]27 for Windows PowerShell 5.1 compatibility
+$ESC = [char]27
+$Red = "$ESC[0;31m"
+$Green = "$ESC[0;32m"
+$Yellow = "$ESC[1;33m"
+$Blue = "$ESC[0;34m"
+$Cyan = "$ESC[0;36m"
+$NC = "$ESC[0m"
 
 # Configuration
 $InstallDir = "$HOME\.acat"
@@ -27,7 +28,7 @@ Write-Host "${Blue}+===========================================================+
 Write-Host ""
 
 # Step 1: Check for Ollama
-Write-Host "${Cyan}[1/6] Checking Ollama...${NC}"
+Write-Host "${Cyan}[1/7] Checking Ollama...${NC}"
 if (-not $NoOllama) {
     if (-not (Get-Command "ollama" -ErrorAction SilentlyContinue)) {
         Write-Host "${Yellow}  Ollama is not installed.${NC}"
@@ -47,7 +48,7 @@ if (-not $NoOllama) {
 Write-Host ""
 
 # Step 2: Create directories
-Write-Host "${Cyan}[2/6] Creating directories...${NC}"
+Write-Host "${Cyan}[2/7] Creating directories...${NC}"
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
 New-Item -ItemType Directory -Force -Path "$InstallDir\bin" | Out-Null
@@ -56,7 +57,7 @@ Write-Host "${Green}  [OK] Created $BinDir${NC}"
 Write-Host ""
 
 # Step 3: Download acat from GitHub
-Write-Host "${Cyan}[3/6] Downloading acat from GitHub...${NC}"
+Write-Host "${Cyan}[3/7] Downloading acat from GitHub...${NC}"
 $TempDir = Join-Path $env:TEMP "acat-$(Get-Random)"
 New-Item -ItemType Directory -Force -Path $TempDir | Out-Null
 $downloaded = $false
@@ -96,8 +97,23 @@ if (-not $downloaded) {
 Remove-Item -Path $TempDir -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host ""
 
-# Step 4: Create PATH wrapper
-Write-Host "${Cyan}[4/6] Creating PATH wrapper...${NC}"
+# Step 4: Create default configuration
+Write-Host "${Cyan}[4/7] Creating default configuration...${NC}"
+$ConfigPath = "$InstallDir\config.json"
+if (-not (Test-Path $ConfigPath)) {
+    $ConfigContent = @{
+        model = "gemma4:latest"
+        provider = "ollama"
+    } | ConvertTo-Json
+    Set-Content -Path $ConfigPath -Value $ConfigContent -Encoding UTF8
+    Write-Host "${Green}  [OK] Created config.json with default model: gemma4:latest${NC}"
+} else {
+    Write-Host "${Yellow}  [!] config.json already exists, keeping existing configuration${NC}"
+}
+Write-Host ""
+
+# Step 5: Create PATH wrapper
+Write-Host "${Cyan}[5/7] Creating PATH wrapper...${NC}"
 
 # Create main PowerShell launcher in install dir (equivalent to bin/acat for Windows)
 $MainWrapperPath = "$InstallDir\bin\acat.ps1"
@@ -116,17 +132,17 @@ param(
     [switch]$version
 )
 
+$ESC = [char]27
+$Red = "$ESC[0;31m"
+$Green = "$ESC[0;32m"
+$Yellow = "$ESC[1;33m"
+$Blue = "$ESC[0;34m"
+$NC = "$ESC[0m"
+
 $InstallDir = "$HOME\.acat"
 $AcatPy = "$InstallDir\src\acat.py"
 $ConfigDir = "$env:USERPROFILE\.acat"
 $DefaultModel = "gemma4:latest"
-
-# Colors
-$Red = "`e[0;31m"
-$Green = "`e[0;32m"
-$Yellow = "`e[1;33m"
-$Blue = "`e[0;34m"
-$NC = "`e[0m"
 
 # Get model from config
 function Get-Model {
@@ -192,7 +208,7 @@ Commands:
   acat                          Start interactive mode
   acat "your question"          Run single command
   acat /init                    Initialize project
-  acat -m llama2 "question"     Use specific model
+  acat -m llama2 "question"    Use specific model
 
 Slash Commands (Interactive Mode):
   /init, /model, /resume, /btw, /config, /tools, /history, /clear, /help, /exit
@@ -264,8 +280,8 @@ $PathWrapperContent | Out-File -FilePath $PathWrapperPath -Encoding utf8
 Write-Host "${Green}  [OK] Created ${BinDir}\acat.ps1${NC}"
 Write-Host ""
 
-# Step 5: Add to PATH for global access
-Write-Host "${Cyan}[5/6] Configuring PATH for global access...${NC}"
+# Step 6: Add to PATH for global access
+Write-Host "${Cyan}[6/7] Configuring PATH for global access...${NC}"
 
 $profileAdded = ""
 
@@ -287,10 +303,19 @@ if ([string]::IsNullOrEmpty($profileAdded)) {
 }
 Write-Host ""
 
-# Step 6: Pull default model
-Write-Host "${Cyan}[6/6] Pulling default model (gemma4:latest)...${NC}"
-ollama pull gemma4:latest 2>$null
-if ($?) {
+# Step 7: Pull default model
+Write-Host "${Cyan}[7/7] Pulling default model (gemma4:latest)...${NC}"
+$pullSuccess = $false
+try {
+    $ErrorActionPreference = "Continue"
+    ollama pull gemma4:latest 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        $pullSuccess = $true
+    }
+} catch {
+    $pullSuccess = $false
+}
+if ($pullSuccess) {
     Write-Host "${Green}  [OK] Model pulled successfully${NC}"
 } else {
     Write-Host "${Yellow}  [!] Model pull failed. Run 'ollama pull gemma4:latest' later.${NC}"
@@ -307,6 +332,7 @@ Write-Host "${Cyan}Installation Summary:${NC}"
 Write-Host "  * acat installed to: $InstallDir"
 Write-Host "  * Wrapper created at: ${BinDir}\acat.ps1"
 Write-Host "  * PATH configured in: User PATH"
+Write-Host "  * Default model: gemma4:latest"
 Write-Host ""
 Write-Host "${Yellow}Next steps:${NC}"
 Write-Host "  1. Restart PowerShell"
