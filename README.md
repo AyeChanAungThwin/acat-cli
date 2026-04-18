@@ -35,6 +35,7 @@ After installation, restart your terminal or run `source ~/.zshrc` (or `source ~
 
 The installer automatically:
 - Installs acat to `~/.acat`
+- Creates default config with model `gemma4:latest`
 - Adds `~/.local/bin` to your PATH in `.zshrc`/`.bashrc`
 - Pulls the default model (gemma4:latest)
 - Installs Ollama if not present
@@ -69,16 +70,17 @@ Invoke-WebRequest -Uri "https://github.com/AyeChanAungThwin/acat-cli/raw/main/in
 & "$env:TEMP\install-acat.ps1"
 ```
 
-Automatically adds acat to User and Machine PATH.
+Automatically installs acat to `~/.acat`, creates a `.cmd` wrapper (bypasses execution policy), adds to User PATH, creates default config with `gemma4:latest`, and pulls the default model.
 
 #### Windows (Local, No Admin - Optional PATH)
 
 ```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 Invoke-WebRequest -Uri "https://github.com/AyeChanAungThwin/acat-cli/raw/main/install-windows-local.ps1" -OutFile "$env:TEMP\install-acat-local.ps1"
 & "$env:TEMP\install-acat-local.ps1"
 ```
 
-Prompts to add to User PATH (no admin required).
+Same as above but no admin required. Adds to User PATH only.
 
 ## Requirements
 
@@ -351,8 +353,11 @@ chmod +x ~/.acat/bin/acat
 ```
 
 ### Windows execution policy
+The installer creates a `.cmd` wrapper that bypasses PowerShell's execution policy automatically. If you still see script errors, reinstall:
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+Invoke-WebRequest -Uri "https://github.com/AyeChanAungThwin/acat-cli/raw/main/install-windows.ps1" -OutFile "$env:TEMP\install-acat.ps1"
+& "$env:TEMP\install-acat.ps1"
 ```
 
 ## License

@@ -245,13 +245,19 @@ if ($resolvedCmd) {
 $MainWrapperContent | Out-File -FilePath $MainWrapperPath -Encoding utf8
 Write-Host "${Green}  [OK] Created $MainWrapperPath${NC}"
 
-# Create simple PATH wrapper that delegates to main launcher
-$PathWrapperPath = "$BinDir\acat.ps1"
-$PathWrapperContent = @"
-& "$InstallDir\bin\acat.ps1" @args
+# Create CMD wrapper that bypasses PowerShell execution policy
+# Using .cmd instead of .ps1 because .ps1 scripts are blocked by default execution policy
+# Remove old .ps1 wrapper if it exists from a previous installation
+if (Test-Path "$BinDir\acat.ps1") {
+    Remove-Item "$BinDir\acat.ps1" -Force -ErrorAction SilentlyContinue
+}
+$CmdWrapperPath = "$BinDir\acat.cmd"
+$CmdWrapperContent = @"
+@echo off
+powershell.exe -ExecutionPolicy Bypass -NoProfile -File "$InstallDir\bin\acat.ps1" %*
 "@
-$PathWrapperContent | Out-File -FilePath $PathWrapperPath -Encoding utf8
-Write-Host "${Green}  [OK] Created ${BinDir}\acat.ps1${NC}"
+Set-Content -Path $CmdWrapperPath -Value $CmdWrapperContent -Encoding ASCII
+Write-Host "${Green}  [OK] Created ${BinDir}\acat.cmd${NC}"
 Write-Host ""
 
 # Step 6: Configure PATH for global access
@@ -304,7 +310,7 @@ Write-Host "${Green}+===========================================================
 Write-Host ""
 Write-Host "${Cyan}Installation Summary:${NC}"
 Write-Host "  * acat installed to: $InstallDir"
-Write-Host "  * Wrapper created at: ${BinDir}\acat.ps1"
+Write-Host "  * Wrapper created at: ${BinDir}\acat.cmd"
 Write-Host "  * PATH configured in: User PATH"
 Write-Host "  * Default model: gemma4:latest"
 Write-Host ""
