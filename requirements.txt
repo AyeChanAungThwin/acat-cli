@@ -1,0 +1,9 @@
+# acat CLI - Python Dependencies
+# Note: Core functionality uses only Python standard library
+# Install Ollama separately: https://ollama.ai
+
+# Optional: For enhanced readline support
+# readline; sys_platform != 'win32'
+
+# Optional: For Windows console colors
+# colorama; sys_platform == 'win32'

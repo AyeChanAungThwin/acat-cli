@@ -1,0 +1,206 @@
+#!/bin/bash
+#
+# acat - AI CLI Agent Tool
+# Bash wrapper for the Python agent engine
+#
+
+set -e
+
+# Script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ACAT_ROOT="$(dirname "$SCRIPT_DIR")"
+ACAT_PY="$ACAT_ROOT/src/acat.py"
+
+# Configuration
+ACAT_CONFIG_DIR="${HOME}/.acat"
+ACAT_PID_FILE="${ACAT_CONFIG_DIR}/agent.pid"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Default model
+DEFAULT_MODEL="gemma4:latest"
+
+# Get model from config or use default
+get_model() {
+    if [ -f "${ACAT_CONFIG_DIR}/config.json" ]; then
+        model=$(python3 -c "import json; print(json.load(open('${ACAT_CONFIG_DIR}/config.json')).get('model', '${DEFAULT_MODEL}'))" 2>/dev/null || echo "${DEFAULT_MODEL}")
+        echo "$model"
+    else
+        echo "${DEFAULT_MODEL}"
+    fi
+}
+
+# Check if Ollama is running
+check_ollama() {
+    if ! command -v ollama &> /dev/null; then
+        echo -e "${RED}Error: Ollama is not installed.${NC}"
+        echo "Install Ollama: https://ollama.ai"
+        exit 1
+    fi
+
+    if ! pgrep -x "ollama" > /dev/null 2>&1; then
+        echo -e "${YELLOW}Warning: Ollama is not running. Starting Ollama...${NC}"
+        ollama serve > /dev/null 2>&1 &
+        sleep 2
+    fi
+}
+
+# Check if model is available
+check_model() {
+    local model="$1"
+    if ! ollama list 2>/dev/null | grep -q "^${model}"; then
+        echo -e "${YELLOW}Model '${model}' not found. Pulling...${NC}"
+        ollama pull "$model"
+    fi
+}
+
+# Stop current agent (Esc key functionality)
+stop_agent() {
+    if [ -f "$ACAT_PID_FILE" ]; then
+        pid=$(cat "$ACAT_PID_FILE")
+        if kill -0 "$pid" 2>/dev/null; then
+            kill "$pid"
+            echo -e "${GREEN}Agent stopped.${NC}"
+        fi
+        rm -f "$ACAT_PID_FILE"
+    fi
+}
+
+# Main entry point
+main() {
+    local model=""
+    local cmd=""
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -m|--model)
+                model="$2"
+                shift 2
+                ;;
+            -c|--command)
+                cmd="$2"
+                shift 2
+                ;;
+            --init)
+                cmd="/init"
+                shift
+                ;;
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            -v|--version)
+                echo "acat version 0.1.0"
+                exit 0
+                ;;
+            *)
+                # Treat as command
+                cmd="$*"
+                break
+                ;;
+        esac
+    done
+
+    # Use configured model if not specified
+    if [ -z "$model" ]; then
+        model=$(get_model)
+    fi
+
+    # Check Ollama
+    check_ollama
+    check_model "$model"
+
+    # Run Python agent
+    if [ -n "$cmd" ]; then
+        # Single command mode
+        python3 "$ACAT_PY" -m "$model" -c "$cmd"
+    else
+        # Interactive mode
+        echo -e "${BLUE}    █████╗  ██████╗  █████╗ ████████╗${NC}"
+        echo -e "${BLUE}   ██╔══██╗██╔════╝ ██╔══██╗╚══██╔══╝${NC}"
+        echo -e "${BLUE}   ███████║██║      ███████║   ██║   ${NC}"
+        echo -e "${BLUE}   ██╔══██║██║      ██╔══██║   ██║   ${NC}"
+        echo -e "${BLUE}   ██║  ██║╚██████╗ ██║  ██║   ██║   ${NC}"
+        echo -e "${BLUE}   ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ${NC}"
+        echo ""
+        echo -e "${BLUE}      Aye Chan Aung Thwin's CLI Agent${NC}"
+        echo -e "${BLUE}                (ACAT)${NC}"
+        echo ""
+        echo -e "${BLUE}           Powered by Ollama${NC}"
+        echo ""
+        echo -e "Model: ${GREEN}${model}${NC}"
+        echo -e "Working directory: ${GREEN}$(pwd)${NC}"
+        echo ""
+        echo -e "Type ${YELLOW}/help${NC} for available commands."
+        echo -e "Press ${YELLOW}Ctrl+D${NC} or ${YELLOW}Esc${NC} to quit."
+        echo -e "Press ${YELLOW}Ctrl+C${NC} to cancel current response."
+        echo ""
+
+        # Save PID for stop functionality
+        echo $$ > "$ACAT_PID_FILE"
+
+        # Run interactive
+        python3 "$ACAT_PY" -m "$model"
+
+        rm -f "$ACAT_PID_FILE"
+    fi
+}
+
+show_help() {
+    cat << EOF
+acat - AI CLI Agent Tool
+
+Usage:
+  acat [options] [command]
+
+Options:
+  -m, --model <name>    Use specified model (default: gemma4:latest)
+  -c, --command <text>  Run single command and exit
+  --init                Initialize project (create ACAT.md)
+  -h, --help            Show this help message
+  -v, --version         Show version
+
+Commands:
+  acat                          Start interactive mode
+  acat "your question"          Run single command
+  acat /init                    Initialize project
+  acat -m llama2 "question"     Use specific model
+
+Keyboard Shortcuts (Interactive Mode):
+  Ctrl+C                        Cancel current response
+  Ctrl+D                        Exit acat
+  Ctrl+L                        Clear screen
+  Esc                           Exit acat (when at prompt)
+
+Slash Commands (Interactive Mode):
+  /init                         Analyze project, create ACAT.md
+  /model [name]                 Get or set the AI model
+  /resume                       Resume previous session
+  /btw <note>                   Add context/note to conversation
+  /config                       Show configuration
+  /tools                        List available tools
+  /history [n]                  Show last n messages
+  /clear                        Clear conversation history
+  /help                         Show help message
+  /exit                         Exit acat
+
+Examples:
+  acat                          # Start interactive session
+  acat "explain this code"      # Ask a question
+  acat /init                    # Initialize project
+  acat -m llama2 "hello"        # Use llama2 model
+
+EOF
+}
+
+# Handle signals
+trap 'echo -e "\n${YELLOW}Interrupted.${NC}"; exit 130' INT
+trap 'echo -e "\n${GREEN}Goodbye!${NC}"; exit 0' TERM
+
+main "$@"
