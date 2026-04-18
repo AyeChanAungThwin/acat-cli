@@ -150,7 +150,8 @@ main() {
         if [ "$provider" = "ollama" ]; then
             echo -e "${BLUE}           Powered by Ollama${NC}"
         else
-            echo -e "${BLUE}           Powered by ${provider^}${NC}"
+            cap_provider="$(echo "$provider" | cut -c1 | tr '[:lower:]' '[:upper:]')$(echo "$provider" | cut -c2-)"
+            echo -e "${BLUE}           Powered by ${cap_provider}${NC}"
         fi
         echo ""
         echo -e "Model: ${GREEN}${model}${NC}"
