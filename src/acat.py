@@ -8,7 +8,11 @@ import os
 import sys
 import json
 import subprocess
-import readline
+try:
+    import readline
+    READLINE_AVAILABLE = True
+except ImportError:
+    READLINE_AVAILABLE = False
 import re
 import shutil
 import time
@@ -2621,11 +2625,12 @@ Keyboard Shortcuts:
                     print("\nGoodbye!")
                     break
         else:
-            # Fallback to readline
-            readline.set_completer(slash_completer)
-            readline.parse_and_bind("tab: complete")
-            readline.parse_and_bind("set show-all-if-ambiguous on")
-            readline.parse_and_bind("\\e: abort")
+            # Fallback to readline (not available on Windows)
+            if READLINE_AVAILABLE:
+                readline.set_completer(slash_completer)
+                readline.parse_and_bind("tab: complete")
+                readline.parse_and_bind("set show-all-if-ambiguous on")
+                readline.parse_and_bind("\\e: abort")
 
             while not self.stop_flag:
                 try:
